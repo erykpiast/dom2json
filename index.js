@@ -1,4 +1,7 @@
-var dom2json = (function() {
+module.exports = (function() {
+
+    var each = require('foreach');
+    var jsonEscape = require('json-escape');
 
     // return JSON representation of node
     /* each entity can have following properties:
@@ -6,35 +9,42 @@ var dom2json = (function() {
      *  - children - if it's element or document node (it's always array of entities or it's undefined if node has no children)
      *  - data - if it's text, comment or doctype node (string in the first two cases, array [ publicId, systemId ] in the last)
      *
-     * Every entity has type property corresponding nodeType property value by default. You can disable including that information 
+     * Every entity has type property corresponding nodeType property value by default. You can disable including that information
      * by passing truthy value as the third argument
      */
 
-    /* filters can be used to prevent including some nodes or attributes in rip 
+    /* filters can be used to prevent including some nodes or attributes in rip
      *  - node - is called for each node, have to return falsy value if node should be omitted or some node to process (ex. the original one)
      *  - attr - is called for each attribute for each node, have to return falsy value if attribute should be omitted
      *           or some other value (ex. the original attr) or new object with fields name and value
      */
 
-    function rip(node, filters, omitType) {
-        if(!filters.node || (node = filters.node(node))) {
+     var typeKey = 'type';
+     var attrsKey = 'attrs';
+     var childrenKey = 'children';
+     var tagKey = 'tag';
+     var dataKey = 'data';
+
+    function serialize(node, filters, omitType) {
+        if(!filters || !filters.node || (node = filters.node(node))) {
             var res = '{';
 
             if(!omitType) {
-                res += '"type":' + node.nodeType;
+                res += '"' + typeKey + '":' + node.nodeType;
             }
 
             switch(node.nodeType) {
                 case node.ELEMENT_NODE:
                 case node.DOCUMENT_NODE:
+                    var i, maxi;
                     var children = false;
                     var firstChild = true;
-                    for(var i = 0, maxi = node.childNodes.length; i < maxi; i++) {
-                        var child = rip(node.childNodes[i], filters, omitType);
+                    for(i = 0, maxi = node.childNodes.length; i < maxi; i++) {
+                        var child = serialize(node.childNodes[i], filters, omitType);
 
                         if(child) {
                             if(!children) {
-                                res += ',"children":[';
+                                res += ',"' + childrenKey + '":[';
 
                                 children = true;
                             }
@@ -54,21 +64,20 @@ var dom2json = (function() {
                     }
 
                     if(node.nodeType === node.ELEMENT_NODE) {
-                        res += ',"tag":"' + json_escape(node.tagName) + '"';
+                        res += ',"' + tagKey + '":"' + jsonEscape(node.tagName) + '"';
 
                         var attrs = false;
                         var firstAttr = true;
-                        for(var i = 0, maxi = node.attributes.length; i < maxi; i++) {
+                        for(i = 0, maxi = node.attributes.length; i < maxi; i++) {
                             var attr = node.attributes[i];
-                            var value = attr.value;
 
-                            if(filters.attr) {
+                            if(filters && filters.attr) {
                                 attr = filters.attr(attr, node);
                             }
 
                             if(attr) {
                                 if(!attrs) {
-                                    res += ',"attrs":{';
+                                    res += ',"' + attrsKey + '":{';
 
                                     attrs = true;
                                 }
@@ -79,7 +88,7 @@ var dom2json = (function() {
                                     firstAttr = false;
                                 }
 
-                                res += '"' + json_escape(attr.name) + '":"' + json_escape(attr.value) + '"';
+                                res += '"' + jsonEscape(attr.name) + '":"' + jsonEscape(attr.value) + '"';
                             }
                         }
 
@@ -90,11 +99,11 @@ var dom2json = (function() {
                 break;
                 case node.TEXT_NODE:
                 case node.COMMENT_NODE:
-                    res += ',"data":"' + json_escape(node.data) + '"';
+                    res += ',"' + dataKey + '":"' + jsonEscape(node.data) + '"';
                 break;
                 case node.DOCUMENT_TYPE:
-                    res += ',"tag":"' + json_escape(node.name) + '"';
-                    res += ',"data":["' + json_escape(node.publicId) + '","' + json_escape(node.systemId) + '"]';
+                    res += ',"' + tagKey + '":"' + jsonEscape(node.name) + '"';
+                    res += ',"' + dataKey + '":["' + jsonEscape(node.publicId) + '","' + jsonEscape(node.systemId) + '"]';
                 break;
                 default:
             }
@@ -106,37 +115,7 @@ var dom2json = (function() {
     }
 
 
-    function each(obj, iter, context) {
-        for(var key in obj) {
-            if(obj.hasOwnProperty(key)) {
-                iter.call(context || null, obj[key], key, obj);
-            }
-        }
-    }
-
-    var cx = /[\u0000\u00ad\u0600-\u0604\u070f\u17b4\u17b5\u200c-\u200f\u2028-\u202f\u2060-\u206f\ufeff\ufff0-\uffff]/g;
-    var escapable = /[\\\"\x00-\x1f\x7f-\x9f\u00ad\u0600-\u0604\u070f\u17b4\u17b5\u200c-\u200f\u2028-\u202f\u2060-\u206f\ufeff\ufff0-\uffff]/g;
-    var meta = { // table of character substitutions
-        '\b': '\\b',
-        '\t': '\\t',
-        '\n': '\\n',
-        '\f': '\\f',
-        '\r': '\\r',
-        '"' : '\\"',
-        '\\': '\\\\'
-    };
-
-    function json_escape(string) {
-        escapable.lastIndex = 0;
-
-        return escapable.test(string) ? string.replace(escapable, function (a) {
-            var c = meta[a];
-            return typeof c === 'string' ? c :
-            '\\u' + ('0000' + a.charCodeAt(0).toString(16)).slice(-4);
-        }) : string.toString();
-    }
-
-    function restructure(token) {
+    function deserialize(token) {
         var node;
 
         if(token.tag) {
@@ -161,7 +140,7 @@ var dom2json = (function() {
 
         if(node && token.children) {
             token.children.forEach(function(childToken) {
-                var child = restructure(childToken);
+                var child = deserialize(childToken);
 
                 if(child) {
                     node.appendChild(child);
@@ -173,6 +152,9 @@ var dom2json = (function() {
     }
 
 
-    return rip;
+    return {
+        serialize: serialize,
+        deserialize: deserialize
+    };
 
 })();
