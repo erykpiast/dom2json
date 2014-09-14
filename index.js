@@ -19,11 +19,11 @@ module.exports = (function() {
      *           or some other value (ex. the original attr) or new object with fields name and value
      */
 
-     var typeKey = 'type';
-     var attrsKey = 'attrs';
-     var childrenKey = 'children';
-     var tagKey = 'tag';
-     var dataKey = 'data';
+ var typeKey = 'type';
+ var attrsKey = 'attrs';
+ var childrenKey = 'children';
+ var tagKey = 'tag';
+ var dataKey = 'data';
 
     function serialize(node, filters, omitType) {
         if(!filters || !filters.node || (node = filters.node(node))) {

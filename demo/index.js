@@ -1,31 +1,40 @@
-var randomDom = require('random-dom-generator');
-var $ = require('jquery');
-var dom2json = require('../index.js');
+var Benchmark = require('benchmark');
+var ripperOldTest = require('./tests/ripper-old');
+var ripperNewObjectTest = require('./tests/ripper-object');
+var ripperNewStringTest = require('./tests/ripper-string');
 
-$(function init() {
-    randomDom(document.querySelector('#random'), 2000, 10, 20, 4, [ 'div', 'span' ], {
-        class: [ 'class1', 'class1 class2', 'class1 class2 class3' ],
-        id: [ 'id1', 'id2', 'id3' ],
-        title: [ 'title1', 'title2', 'title3' ],
-        style: [ 'background-color: red', 'border-color: orange', 'outline-color: purple' ]
+// run without measure to minimalize influence of any initialization
+ripperOldTest();
+ripperNewObjectTest();
+ripperNewStringTest();
+
+
+var cycles = [ ];
+var suite = new Benchmark.Suite()
+    .add('Ripper old', ripperOldTest)
+    .add('Ripper new object', ripperNewObjectTest)
+    .add('Ripper new string', ripperNewStringTest)
+    .on('cycle', function(event) {
+        cycles.push(event.target);
+    })
+    .on('complete', function() {
+        document.body.innerHTML = [
+            '<h1>Benchmark results</h1>'
+        ].concat(
+            [ '<ol>' ],
+            cycles.map(function(cycle) {
+                return String(cycle);
+            }).map(function(cycle) {
+                return ('<li>' + cycle + '</li>')
+            }),
+            [ '</ol>' ],
+            [
+                '<p>And the winner is...<br/>',
+                '<strong>' + this.filter('fastest').pluck('name')[0].toUpperCase() + '</strong>!'
+            ]
+        ).join('');
     });
-        
-    var json = dom2json.serialize(document.documentElement, {
-        node: function(node) {
-            if(node.tagName === 'SPAN') {
-                return;
-            } else {
-                return node;
-            }
-        },
-        attr: function(attr) {
-            if(attr.name === 'style') {
-                return false;
-            } else {
-                return attr;
-            }
-        }
-    });
-    
-    var dom = dom2json.deserialize(json);
-});
+
+setTimeout(function() {
+    suite.run();
+}, 2000);

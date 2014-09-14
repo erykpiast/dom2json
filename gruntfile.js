@@ -18,6 +18,10 @@ module.exports = function (grunt) {
         pkg: grunt.file.readJSON('package.json'),
         config: {
             demo: {
+                server: {
+                    port: process.env.PORT || 8080,
+                    host: process.env.IP || '127.0.0.1'
+                },
                 dir: 'demo',
                 files: [
                     'demo/index.js',
@@ -136,8 +140,8 @@ module.exports = function (grunt) {
         'http-server': {
             demo: {
                 root: '.',
-                port: 8080,
-                host: '127.0.0.1',
+                port: '<%= config.demo.server.port %>',
+                host: '<%= config.demo.server.host %>',
                 cache: -1,
                 showDir : true,
                 autoIndex: true,
