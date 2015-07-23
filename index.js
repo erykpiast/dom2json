@@ -129,13 +129,13 @@ module.exports = (function() {
     function deserialize(token) {
         var node;
 
-        if(token.tag) {
-            if(!token.type || (token.type === document.ELEMENT_NODE)) {
+        if(token.hasOwnProperty('tag')) {
+            if((token.type === document.ELEMENT_NODE) || !token.hasOwnProperty('data')) {
                 node = document.createElement(token.tag);
             } else if(token.type === document.DOCUMENT_TYPE) {
                 node = document.implementation.createDocumentType(token.tag, token.data[0], token.data[1]);
             }
-        } else if(token.data) {
+        } else if(token.hasOwnProperty('data')) {
             if(!token.type || (token.type === document.TEXT_NODE)) {
                 node = document.createTextNode(token.data);
             } else if(token.type === document.COMMENT_TYPE) {
