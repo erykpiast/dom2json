@@ -19,52 +19,27 @@ module.exports = (function() {
      *           or some other value (ex. the original attr) or new object with fields name and value
      */
 
- var typeKey = 'type';
- var attrsKey = 'attrs';
- var childrenKey = 'children';
- var tagKey = 'tag';
- var dataKey = 'data';
+    var typeKey = 'type';
+    var attrsKey = 'attrs';
+    var childrenKey = 'children';
+    var tagKey = 'tag';
+    var dataKey = 'data';
 
     function serialize(node, filters, omitType) {
         if(!filters || !filters.node || (node = filters.node(node))) {
             var res = '{';
 
             if(!omitType) {
-                res += '"' + typeKey + '":' + node.nodeType;
+                res += '"' + typeKey + '":' + node.nodeType + ',';
             }
 
             switch(node.nodeType) {
                 case node.ELEMENT_NODE:
                 case node.DOCUMENT_NODE:
-                    var i, maxi;
-                    var children = false;
-                    var firstChild = true;
-                    for(i = 0, maxi = node.childNodes.length; i < maxi; i++) {
-                        var child = serialize(node.childNodes[i], filters, omitType);
-
-                        if(child) {
-                            if(!children) {
-                                res += ',"' + childrenKey + '":[';
-
-                                children = true;
-                            }
-
-                            if(!firstChild) {
-                                res += ',';
-                            } else {
-                                firstChild = false;
-                            }
-
-                            res += child;
-                        }
-                    }
-
-                    if(children) {
-                        res += ']';
-                    }
+                    var commaNeeded = false;
 
                     if(node.nodeType === node.ELEMENT_NODE) {
-                        res += ',"' + tagKey + '":"' + jsonEscape(node.tagName) + '"';
+                        res += '"' + tagKey + '":"' + jsonEscape(node.tagName) + '"';
 
                         var attrs = false;
                         var firstAttr = true;
@@ -95,17 +70,53 @@ module.exports = (function() {
                         if(attrs) {
                             res += '}';
                         }
+
+                        commaNeeded = true;
+                    }
+
+                    var i, maxi;
+                    var children = false;
+                    var firstChild = true;
+                    for(i = 0, maxi = node.childNodes.length; i < maxi; i++) {
+                        var child = serialize(node.childNodes[i], filters, omitType);
+
+                        if(child) {
+                            if(!children) {
+                                if (commaNeeded) {
+                                    res += ',';
+                                    commaNeeded = false;
+                                }
+                                res += '"' + childrenKey + '":[';
+
+                                children = true;
+                            }
+
+                            if(!firstChild) {
+                                res += ',';
+                            } else {
+                                firstChild = false;
+                            }
+
+                            res += child;
+                        }
+                    }
+
+                    if(children) {
+                        res += ']';
                     }
                 break;
                 case node.TEXT_NODE:
                 case node.COMMENT_NODE:
-                    res += ',"' + dataKey + '":"' + jsonEscape(node.data) + '"';
+                    res += '"' + dataKey + '":"' + jsonEscape(node.data) + '"';
                 break;
                 case node.DOCUMENT_TYPE:
-                    res += ',"' + tagKey + '":"' + jsonEscape(node.name) + '"';
-                    res += ',"' + dataKey + '":["' + jsonEscape(node.publicId) + '","' + jsonEscape(node.systemId) + '"]';
+                    res += '"' + tagKey + '":"' + jsonEscape(node.name) + '"';
+                    res += '"' + dataKey + '":["' + jsonEscape(node.publicId) + '","' + jsonEscape(node.systemId) + '"]';
                 break;
                 default:
+                    if (!omitType) {
+                        res = res.slice(0, -1); // remove comma
+                    }
             }
 
             res += '}';
