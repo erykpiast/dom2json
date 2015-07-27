@@ -37,6 +37,9 @@ module.exports = (function() {
                 case node.ELEMENT_NODE:
                 case node.DOCUMENT_NODE:
                     var commaNeeded = false;
+                    var i, maxi;
+                    var children = false;
+                    var firstChild = true;
 
                     if(node.nodeType === node.ELEMENT_NODE) {
                         res += '"' + tagKey + '":"' + jsonEscape(node.tagName) + '"';
@@ -74,9 +77,6 @@ module.exports = (function() {
                         commaNeeded = true;
                     }
 
-                    var i, maxi;
-                    var children = false;
-                    var firstChild = true;
                     for(i = 0, maxi = node.childNodes.length; i < maxi; i++) {
                         var child = serialize(node.childNodes[i], filters, omitType);
 
