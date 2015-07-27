@@ -19,52 +19,30 @@ module.exports = (function() {
      *           or some other value (ex. the original attr) or new object with fields name and value
      */
 
- var typeKey = 'type';
- var attrsKey = 'attrs';
- var childrenKey = 'children';
- var tagKey = 'tag';
- var dataKey = 'data';
+    var typeKey = 'type';
+    var attrsKey = 'attrs';
+    var childrenKey = 'children';
+    var tagKey = 'tag';
+    var dataKey = 'data';
 
     function serialize(node, filters, omitType) {
         if(!filters || !filters.node || (node = filters.node(node))) {
             var res = '{';
 
             if(!omitType) {
-                res += '"' + typeKey + '":' + node.nodeType;
+                res += '"' + typeKey + '":' + node.nodeType + ',';
             }
 
             switch(node.nodeType) {
                 case node.ELEMENT_NODE:
                 case node.DOCUMENT_NODE:
+                    var commaNeeded = false;
                     var i, maxi;
                     var children = false;
                     var firstChild = true;
-                    for(i = 0, maxi = node.childNodes.length; i < maxi; i++) {
-                        var child = serialize(node.childNodes[i], filters, omitType);
-
-                        if(child) {
-                            if(!children) {
-                                res += ',"' + childrenKey + '":[';
-
-                                children = true;
-                            }
-
-                            if(!firstChild) {
-                                res += ',';
-                            } else {
-                                firstChild = false;
-                            }
-
-                            res += child;
-                        }
-                    }
-
-                    if(children) {
-                        res += ']';
-                    }
 
                     if(node.nodeType === node.ELEMENT_NODE) {
-                        res += ',"' + tagKey + '":"' + jsonEscape(node.tagName) + '"';
+                        res += '"' + tagKey + '":"' + jsonEscape(node.tagName) + '"';
 
                         var attrs = false;
                         var firstAttr = true;
@@ -95,17 +73,50 @@ module.exports = (function() {
                         if(attrs) {
                             res += '}';
                         }
+
+                        commaNeeded = true;
+                    }
+
+                    for(i = 0, maxi = node.childNodes.length; i < maxi; i++) {
+                        var child = serialize(node.childNodes[i], filters, omitType);
+
+                        if(child) {
+                            if(!children) {
+                                if (commaNeeded) {
+                                    res += ',';
+                                    commaNeeded = false;
+                                }
+                                res += '"' + childrenKey + '":[';
+
+                                children = true;
+                            }
+
+                            if(!firstChild) {
+                                res += ',';
+                            } else {
+                                firstChild = false;
+                            }
+
+                            res += child;
+                        }
+                    }
+
+                    if(children) {
+                        res += ']';
                     }
                 break;
                 case node.TEXT_NODE:
                 case node.COMMENT_NODE:
-                    res += ',"' + dataKey + '":"' + jsonEscape(node.data) + '"';
+                    res += '"' + dataKey + '":"' + jsonEscape(node.data) + '"';
                 break;
                 case node.DOCUMENT_TYPE:
-                    res += ',"' + tagKey + '":"' + jsonEscape(node.name) + '"';
-                    res += ',"' + dataKey + '":["' + jsonEscape(node.publicId) + '","' + jsonEscape(node.systemId) + '"]';
+                    res += '"' + tagKey + '":"' + jsonEscape(node.name) + '"';
+                    res += '"' + dataKey + '":["' + jsonEscape(node.publicId) + '","' + jsonEscape(node.systemId) + '"]';
                 break;
                 default:
+                    if (!omitType) {
+                        res = res.slice(0, -1); // remove comma
+                    }
             }
 
             res += '}';
@@ -118,13 +129,13 @@ module.exports = (function() {
     function deserialize(token) {
         var node;
 
-        if(token.tag) {
-            if(!token.type || (token.type === document.ELEMENT_NODE)) {
+        if(token.hasOwnProperty('tag')) {
+            if((token.type === document.ELEMENT_NODE) || !token.hasOwnProperty('data')) {
                 node = document.createElement(token.tag);
             } else if(token.type === document.DOCUMENT_TYPE) {
                 node = document.implementation.createDocumentType(token.tag, token.data[0], token.data[1]);
             }
-        } else if(token.data) {
+        } else if(token.hasOwnProperty('data')) {
             if(!token.type || (token.type === document.TEXT_NODE)) {
                 node = document.createTextNode(token.data);
             } else if(token.type === document.COMMENT_TYPE) {
