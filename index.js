@@ -137,7 +137,7 @@ module.exports = (function() {
                 try {
                     node.setAttribute(attrName, attrValue);
                 } catch(e) {
-                    console.error('[dom2json] Couldn\'t set attribute "' + attrName + '" to "' + attrValue + '"', e, node);
+                    console.error('[dom2json] Couldn\'t set attribute "' + attrName + '" to "' + attrValue + '"', e, token, node);
                 }
             });
         }
